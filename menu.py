@@ -207,12 +207,6 @@ def main() -> None:
     else:
         out.out_yellow("No requirements.txt found — skipping pip install")
 
-    entrypoint = detect_entrypoint(work_dir)
-    hint = (
-        f"Try: python {entrypoint} --help"
-        if entrypoint
-        else "Check the repo's README for how to run it."
-    )
     if os.path.ismount("/output"):
         output_note = "/output is mounted — write results there to keep them after this container exits."
     else:
@@ -226,7 +220,21 @@ def main() -> None:
     py_files = sorted(glob.glob("*.py"))
     if py_files:
         subprocess.run(["ls", "-l"] + py_files, check=False)
-    out.out(f"\n{hint}\n{output_note}\n")
+
+    if len(py_files) == 1:
+        # Unambiguous entry point -- just run its help instead of merely
+        # suggesting the command.
+        out.out_colored(f"\n$ python {py_files[0]} -h", color=Color.CYAN)
+        subprocess.run(["python", py_files[0], "-h"], check=False)
+        out.out(f"\n{output_note}\n")
+    else:
+        entrypoint = detect_entrypoint(work_dir)
+        hint = (
+            f"Try: python {entrypoint} --help"
+            if entrypoint
+            else "Check the repo's README for how to run it."
+        )
+        out.out(f"\n{hint}\n{output_note}\n")
 
     _drop_to_shell()
 
