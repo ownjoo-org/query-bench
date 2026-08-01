@@ -31,15 +31,29 @@ docker build -t query-bench .
 docker run -it query-bench
 ```
 
-You'll see a numbered menu of available tools. Pick one; it clones the repo into your home
-directory inside the container, runs `pip install -r requirements.txt`, and execs into an
-interactive shell in that directory. From there, e.g.:
+You'll first see a [disclaimer](DISCLAIMER.md) (no warranty, no liability, no security guarantee —
+see below) that you must explicitly accept to continue. After that, the menu queries the GitHub
+API live for every public `query_*` repo under `ownjoo-org` and lists them — no rebuild needed
+when a new tool is added org-side. Pick one; it clones the repo into your home directory inside
+the container, runs `pip install -r requirements.txt`, and execs into an interactive shell in that
+directory, having auto-detected the tool's entry point (`main.py` if present, otherwise whichever
+top-level `.py` file has an `if __name__ == "__main__":` guard). From there, e.g.:
 
 ```bash
 python main.py --help
 ```
 
-(Entry point filename varies per tool — the menu tells you which one after setup.)
+The GitHub API is unauthenticated by default (60 requests/hr per IP). If you're hitting that
+limit, pass a token: `docker run -it -e GITHUB_TOKEN=ghp_... query-bench`.
+
+## Disclaimer
+
+[`DISCLAIMER.md`](DISCLAIMER.md) is shown and must be explicitly accepted (`y`) before the menu
+loads — declining exits immediately without cloning or installing anything. It covers no
+warranty, no liability, and no guarantee of security for this container or the third-party tools
+and dependencies it clones (which aren't under our control), plus a recommendation that your
+security team independently evaluate any tool before use. This is a plain-language disclaimer, not
+legal advice — have it reviewed by counsel before relying on it.
 
 ## What's in it
 
@@ -48,33 +62,18 @@ python main.py --help
 - Non-root by default (`toolrunner` user); the venv is `chown`'d to that user at build time so
   runtime `pip install` (of whatever tool you pick) actually has write permission
 
-## Tools in the menu
+## Tool discovery
 
-| Tool | Entry point | Notes |
-|---|---|---|
-| [query_checkmarx_one](https://github.com/ownjoo-org/query_checkmarx_one) | `main.py` | Checkmarx One SAST/SCA findings |
-| [query_kibana](https://github.com/ownjoo-org/query_kibana) | `main.py` | |
-| [query_radiant_vds](https://github.com/ownjoo-org/query_radiant_vds) | `main.py` | Radiant Logic IDM (ADAP/REST endpoint) |
-| [query_sysdig](https://github.com/ownjoo-org/query_sysdig) | `main.py` | |
-| [query_zafran](https://github.com/ownjoo-org/query_zafran) | `qz.py` | Assets/findings via ZQL, local SQLite join + SQL query mode |
+The menu is dynamic — it lists every public, non-archived repo under `ownjoo-org` whose name
+starts with `query_`, fetched live via the GitHub API (see `fetch_query_tools()` in
+[`menu.py`](menu.py)). Nothing to maintain here when a new query tool is added or removed org-side.
 
-`query_ionix_async` is intentionally excluded — it's a private repo, so a customer container
-without their own GitHub credentials can't clone it. Public `query_*` tools not yet on this list
-can be added to `TOOLS` in [`menu.py`](menu.py).
+Private `query_*` repos (e.g. `query_ionix_async`) never appear — the unauthenticated API call
+simply can't see them, so a customer without their own GitHub credentials can't be shown a tool
+they couldn't clone anyway.
 
-## Adding a tool to the menu
-
-Add an entry to the `TOOLS` list in `menu.py`:
-
-```python
-{
-    "name": "query_something",
-    "repo": "https://github.com/ownjoo-org/query_something.git",
-    "entrypoint": "main.py",
-    "description": "One-line description",
-},
-```
-
-The only requirement is that the target repo installs cleanly via `pip install -r requirements.txt`
-(all current entries do — three of them previously didn't, due to a stale dependency reference;
-see git history / [ownjoo-org/utils](https://github.com/ownjoo-org/utils) for context).
+The only requirement for a tool to work through this menu is that it installs cleanly via
+`pip install -r requirements.txt`. Three tools previously didn't, due to a stale dependency
+reference; see git history / [ownjoo-org/utils](https://github.com/ownjoo-org/utils) for context.
+Since the list is now fetched live, newly-added `query_*` repos aren't pre-vetted — if one fails to
+install or run, that's a bug in that tool's own repo, not this container.

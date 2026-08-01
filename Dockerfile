@@ -14,6 +14,7 @@ RUN apk add --no-cache \
 ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY menu.py /usr/local/bin/menu.py
+COPY DISCLAIMER.md /usr/local/share/query-bench/DISCLAIMER.md
 RUN chmod +x /usr/local/bin/menu.py
 
 USER toolrunner
