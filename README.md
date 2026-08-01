@@ -74,6 +74,30 @@ Docker image cache after the container exits, same as any image you `docker pull
 and contains nothing session- or customer-specific. Remove it explicitly with `docker rmi
 query-bench` if you don't want it cached locally.
 
+**Want the container instance to persist instead?** Drop `--rm`:
+
+```bash
+docker run -it query-bench
+```
+
+The stopped container (and its writable layer — the clone, installed packages, anything typed)
+then sticks around on disk so you can `docker start -ai <container>` to resume it later, or
+`docker cp <container>:/path ./local` to pull files out. You're opting back into the state
+described above though — including that anything sensitive typed at a prompt (e.g. API
+credentials) remains on disk until you `docker rm` it yourself.
+
+**Want results to survive on purpose?** Mount a local directory at `/output` (created and owned by
+the non-root user at build time, so this works cleanly whether or not anything's mounted there):
+
+```bash
+docker run --rm -it -v "$(pwd)/output:/output" query-bench
+```
+
+Point whichever tool you pick at `/output` for its results (e.g. `python main.py --output
+/output/results.json`, or `cd /output` before running it, depending on that tool's own CLI). The
+menu tells you after setup whether `/output` is actually mounted. This is the one deliberate,
+opt-in exception to "nothing persists" — everything else about the isolation above still holds.
+
 ## Disclaimer
 
 [`DISCLAIMER.md`](DISCLAIMER.md) is shown and must be explicitly accepted (`y`) before the menu

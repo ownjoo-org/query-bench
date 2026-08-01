@@ -136,7 +136,15 @@ def main() -> None:
         if entrypoint
         else "Check the repo's README for how to run it."
     )
-    console.print(f"\n[bold green]Ready.[/bold green] You're in {work_dir}.\n{hint}\n")
+    if os.path.ismount("/output"):
+        output_note = "[bold]/output[/bold] is mounted — write results there to keep them after this container exits."
+    else:
+        output_note = (
+            "No host directory is mounted at /output, so anything you write inside this "
+            "container is lost when it exits. Restart with [bold]-v <local-dir>:/output[/bold] "
+            "to keep results."
+        )
+    console.print(f"\n[bold green]Ready.[/bold green] You're in {work_dir}.\n{hint}\n{output_note}\n")
 
     shell = os.environ.get("SHELL", "/bin/sh")
     os.execvp(shell, [shell])

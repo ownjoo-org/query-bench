@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     && python3.14 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir rich \
     && addgroup -S toolrunner && adduser -S -G toolrunner toolrunner \
-    && chown -R toolrunner:toolrunner /opt/venv
+    && chown -R toolrunner:toolrunner /opt/venv \
+    && mkdir -p /output && chown toolrunner:toolrunner /output
 
 ENV PATH="/opt/venv/bin:${PATH}"
 
