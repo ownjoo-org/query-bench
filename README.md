@@ -28,7 +28,7 @@ docker build -t query-bench .
 ## Run
 
 ```bash
-docker run -it query-bench
+docker run --rm -it query-bench
 ```
 
 You'll first see a [disclaimer](DISCLAIMER.md) (no warranty, no liability, no security guarantee —
@@ -44,7 +44,35 @@ python main.py --help
 ```
 
 The GitHub API is unauthenticated by default (60 requests/hr per IP). If you're hitting that
-limit, pass a token: `docker run -it -e GITHUB_TOKEN=ghp_... query-bench`.
+limit, pass a token: `docker run --rm -it -e GITHUB_TOKEN=ghp_... query-bench`.
+
+## Host isolation & cleanup
+
+**Nothing this container does can reach the host filesystem.** Docker containers get their own
+isolated root filesystem via Linux namespaces; unless you explicitly add `-v`/`--mount`, there is
+no path inside the container leading to any host file — not restricted, genuinely absent. The
+documented `docker run` command above has no mounts, no `--privileged`, and no elevated
+capabilities (`--cap-add`) — none are ever needed for anything this container does (clone a repo,
+pip install, run a Python script). It also runs as a non-root user (`toolrunner`) as defense in
+depth. None of `-v`/`--mount`, `--privileged`, a Docker-socket mount, or `--net=host`/`--pid=host`
+(the ways this guarantee could be broken) appear anywhere in this repo. Verify yourself:
+
+```bash
+docker run --rm query-bench sh -c 'ls / ; whoami'         # no host paths visible, non-root
+docker inspect <container_id> --format '{{json .Mounts}}' # empty mount list
+```
+
+**Cleanup is `--rm`, not just stopping.** `docker stop` only halts the process — the container's
+writable layer (the cloned repo, installed packages, anything typed at a tool's prompts, including
+API credentials) still sits on disk until the container is actually *removed*. The documented run
+command uses `--rm`, so Docker removes that layer automatically the moment the shell exits —
+nothing from a session survives past that point, no separate cleanup step required.
+
+This is distinct from **the image** (`query-bench:latest` itself — Python, git, `menu.py`,
+`DISCLAIMER.md`): that's static, public, identical for every user, and persists in your local
+Docker image cache after the container exits, same as any image you `docker pull` — that's normal
+and contains nothing session- or customer-specific. Remove it explicitly with `docker rmi
+query-bench` if you don't want it cached locally.
 
 ## Disclaimer
 
