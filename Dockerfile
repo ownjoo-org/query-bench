@@ -1,0 +1,22 @@
+# hadolint ignore=DL3006
+FROM cgr.dev/chainguard/wolfi-base
+
+# hadolint ignore=DL3018
+RUN apk add --no-cache \
+        ca-certificates-bundle \
+        git \
+        python-3.14 \
+    && python3.14 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir rich \
+    && addgroup -S toolrunner && adduser -S -G toolrunner toolrunner \
+    && chown -R toolrunner:toolrunner /opt/venv
+
+ENV PATH="/opt/venv/bin:${PATH}"
+
+COPY menu.py /usr/local/bin/menu.py
+RUN chmod +x /usr/local/bin/menu.py
+
+USER toolrunner
+WORKDIR /home/toolrunner
+
+ENTRYPOINT ["python3.14", "/usr/local/bin/menu.py"]
