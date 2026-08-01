@@ -1,8 +1,9 @@
 # Disclaimer
 
-This container clones and runs third-party, open-source tools from the `ownjoo-org` GitHub
-organization, along with whatever dependencies those tools require. Those tools and their
-dependencies are not under ownjoo.org's control.
+This container is maintained by ownjoo.org, and the tools it clones from the `ownjoo-org` GitHub
+organization are ownjoo.org's own code as well. However, those tools pull in numerous third-party
+libraries and packages to do their work — those dependencies are not maintained by ownjoo.org and
+are not under our control.
 
 **No warranty.** This software is provided "AS IS", without warranty of any kind, express or
 implied, including but not limited to the warranties of merchantability, fitness for a

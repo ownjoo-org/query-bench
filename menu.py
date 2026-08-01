@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 import json
 import os
 import re
@@ -49,12 +50,22 @@ def confirm(prompt: str, default: bool = False) -> bool:
         out.out("Please enter y or n.")
 
 
-def choose(prompt: str, n: int) -> int:
+def choose(prompt: str, n: int, min_value: int = 1) -> int:
     while True:
-        resp = input(f"{prompt} [1-{n}]: ").strip()
-        if resp.isdigit() and 1 <= int(resp) <= n:
+        resp = input(f"{prompt} [{min_value}-{n}]: ").strip()
+        if resp.isdigit() and min_value <= int(resp) <= n:
             return int(resp)
-        out.out(f"Please enter a number between 1 and {n}.")
+        out.out(f"Please enter a number between {min_value} and {n}.")
+
+
+def _drop_to_shell() -> None:
+    # os.execvp replaces the process image immediately, bypassing Python's
+    # normal interpreter shutdown -- anything still sitting in stdout's
+    # buffer (oj_toolkit's Output defaults to flush=False) would be lost
+    # rather than ever reaching the terminal.
+    sys.stdout.flush()
+    shell = os.environ.get("SHELL", "/bin/sh")
+    os.execvp(shell, [shell])
 
 
 def show_disclaimer_and_confirm() -> None:
@@ -68,7 +79,7 @@ def show_disclaimer_and_confirm() -> None:
     text = text.replace("**", "")
 
     title = Color.BOLD + Color.YELLOW + "Disclaimer" + Color.RESET
-    box = Box(style="auto", title=title, padding=1)
+    box = Box(style="auto", title=title, padding=1, border_color=Color.RED)
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     for i, para in enumerate(paragraphs):
         if i > 0:
@@ -163,7 +174,12 @@ def main() -> None:
         out.out_red(f"No {TOOL_PREFIX}* tools found under {ORG}.")
         sys.exit(1)
 
-    table = Table(headers=["#", "Tool", "Description"], style="auto")
+    table = Table(headers=["#", "Tool", "Description"], style="auto", border_color=Color.GREEN)
+    table.add_row(
+        Color.CYAN + "0" + Color.RESET,
+        Color.DIM + "(shell)" + Color.RESET,
+        "Skip cloning a tool -- drop straight into a shell",
+    )
     for i, tool in enumerate(tools, start=1):
         table.add_row(
             Color.CYAN + str(i) + Color.RESET,
@@ -172,7 +188,10 @@ def main() -> None:
         )
     table.out()
 
-    choice = choose("Select a tool to clone and set up", len(tools))
+    choice = choose("Select a tool to clone and set up", len(tools), min_value=0)
+    if choice == 0:
+        out.out("\nDropping into a shell — no tool cloned.")
+        _drop_to_shell()
     tool = tools[choice - 1]
 
     work_dir = os.path.expanduser(f"~/{tool['name']}")
@@ -203,16 +222,13 @@ def main() -> None:
             "results."
         )
     out.out_green(f"\nReady. You're in {work_dir}.")
-    out.out(f"{hint}\n{output_note}\n")
+    out.out("")
+    py_files = sorted(glob.glob("*.py"))
+    if py_files:
+        subprocess.run(["ls", "-l"] + py_files, check=False)
+    out.out(f"\n{hint}\n{output_note}\n")
 
-    # os.execvp replaces the process image immediately, bypassing Python's
-    # normal interpreter shutdown -- anything still sitting in stdout's
-    # buffer (oj_toolkit's Output defaults to flush=False) would be lost
-    # rather than ever reaching the terminal.
-    sys.stdout.flush()
-
-    shell = os.environ.get("SHELL", "/bin/sh")
-    os.execvp(shell, [shell])
+    _drop_to_shell()
 
 
 if __name__ == "__main__":
