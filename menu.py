@@ -4,11 +4,11 @@ import os
 import re
 import subprocess
 import sys
-import textwrap
 import urllib.error
 import urllib.request
 
-from oj_toolkit.console import Box, Output, Table
+from oj_toolkit.console import Box, Color, Output, Table
+from oj_toolkit.console.terminal import visible_width
 
 ORG = "ownjoo-org"
 TOOL_PREFIX = "query_"
@@ -16,6 +16,24 @@ GITHUB_API = f"https://api.github.com/orgs/{ORG}/repos"
 DISCLAIMER_PATH = "/usr/local/share/query-bench/DISCLAIMER.md"
 
 out = Output()
+
+
+def _wrap_ansi(text: str, width: int) -> list[str]:
+    """Word-wrap text to width, treating ANSI escape codes as zero-width."""
+    words = text.split()
+    if not words:
+        return [""]
+    lines = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = current + " " + word
+        if visible_width(candidate) <= width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
 
 
 def confirm(prompt: str, default: bool = False) -> bool:
@@ -43,16 +61,26 @@ def show_disclaimer_and_confirm() -> None:
     with open(DISCLAIMER_PATH, encoding="utf-8") as f:
         raw = f.read()
 
-    # Plain-text rendering: strip Markdown syntax rather than parsing it.
+    # Plain-text rendering: strip Markdown syntax rather than parsing it, but
+    # bold whichever short lead-in sentence starts each paragraph (that's
+    # what the "**...**" markers were marking in the source) for readability.
     text = re.sub(r"^#.*\n+", "", raw.strip())
     text = text.replace("**", "")
 
-    box = Box(style="auto", title="Disclaimer", padding=1)
+    title = Color.BOLD + Color.YELLOW + "Disclaimer" + Color.RESET
+    box = Box(style="auto", title=title, padding=1)
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     for i, para in enumerate(paragraphs):
         if i > 0:
             box.add_line("")
-        for line in textwrap.wrap(" ".join(para.split()), width=76):
+        para = " ".join(para.split())
+        lead_match = re.match(r"^([^.]{1,40}\.)\s*(.*)$", para)
+        if lead_match:
+            lead, rest = lead_match.groups()
+            styled = Color.BOLD + lead + Color.RESET + (f" {rest}" if rest else "")
+        else:
+            styled = para
+        for line in _wrap_ansi(styled, width=76):
             box.add_line(line)
     box.out()
 
@@ -129,7 +157,7 @@ def detect_entrypoint(work_dir: str) -> str | None:
 def main() -> None:
     show_disclaimer_and_confirm()
 
-    out.out("Fetching available tools from GitHub...")
+    out.out_colored("Fetching available tools from GitHub...", color=Color.CYAN)
     tools = fetch_query_tools()
     if not tools:
         out.out_red(f"No {TOOL_PREFIX}* tools found under {ORG}.")
@@ -137,21 +165,25 @@ def main() -> None:
 
     table = Table(headers=["#", "Tool", "Description"], style="auto")
     for i, tool in enumerate(tools, start=1):
-        table.add_row(i, tool["name"], tool["description"])
+        table.add_row(
+            Color.CYAN + str(i) + Color.RESET,
+            Color.BOLD + tool["name"] + Color.RESET,
+            tool["description"],
+        )
     table.out()
 
     choice = choose("Select a tool to clone and set up", len(tools))
     tool = tools[choice - 1]
 
     work_dir = os.path.expanduser(f"~/{tool['name']}")
-    out.out(f"\nCloning {tool['repo']} -> {work_dir}")
+    out.out_colored(f"\nCloning {tool['repo']} -> {work_dir}", color=Color.CYAN)
     subprocess.run(["git", "clone", "--depth", "1", tool["repo"], work_dir], check=True)
 
     os.chdir(work_dir)
 
     requirements = os.path.join(work_dir, "requirements.txt")
     if os.path.exists(requirements):
-        out.out("Installing requirements.txt")
+        out.out_colored("Installing requirements.txt", color=Color.CYAN)
         subprocess.run(["pip", "install", "--no-cache-dir", "-r", requirements], check=True)
     else:
         out.out_yellow("No requirements.txt found — skipping pip install")
