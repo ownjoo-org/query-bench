@@ -31,17 +31,22 @@ docker build -t query-bench .
 docker run --rm -it query-bench
 ```
 
-You'll first see a [disclaimer](DISCLAIMER.md) (no warranty, no liability, no security guarantee —
-see below) that you must explicitly accept to continue. After that, the menu queries the GitHub
-API live for every public `query_*` repo under `ownjoo-org` and lists them — no rebuild needed
-when a new tool is added org-side. Pick one; it clones the repo into your home directory inside
-the container, runs `pip install -r requirements.txt`, and execs into an interactive shell in that
-directory, having auto-detected the tool's entry point (`main.py` if present, otherwise whichever
-top-level `.py` file has an `if __name__ == "__main__":` guard). From there, e.g.:
+You'll first see a red-bordered [disclaimer](DISCLAIMER.md) (no warranty, no liability, no
+security guarantee — see below) that you must explicitly accept to continue. After that, a
+green-bordered menu queries the GitHub API live for every public `query_*` repo under `ownjoo-org`
+and lists them — no rebuild needed when a new tool is added org-side. A `0` row is always
+available to skip straight to a shell with nothing cloned.
 
-```bash
-python main.py --help
-```
+Pick a tool and it clones the repo into your home directory inside the container, runs
+`pip install -r requirements.txt`, lists the tool's `.py` files, and execs into an interactive
+shell in that directory:
+
+- **Exactly one `.py` file** (the common case): unambiguous entry point, so it just runs
+  `python <file>.py -h` for you and shows the real usage output immediately.
+- **Multiple `.py` files**: prints a `Try: python <file>.py --help` hint instead — the entry point
+  is auto-detected (`main.py` if present, otherwise whichever file has an
+  `if __name__ == "__main__":` guard), but not run automatically since which file matters more
+  when there's more than one.
 
 The GitHub API is unauthenticated by default (60 requests/hr per IP). If you're hitting that
 limit, pass a token: `docker run --rm -it -e GITHUB_TOKEN=ghp_... query-bench`.
@@ -101,18 +106,25 @@ opt-in exception to "nothing persists" — everything else about the isolation a
 ## Disclaimer
 
 [`DISCLAIMER.md`](DISCLAIMER.md) is shown and must be explicitly accepted (`y`) before the menu
-loads — declining exits immediately without cloning or installing anything. It covers no
-warranty, no liability, and no guarantee of security for this container or the third-party tools
-and dependencies it clones (which aren't under our control), plus a recommendation that your
-security team independently evaluate any tool before use. This is a plain-language disclaimer, not
-legal advice — have it reviewed by counsel before relying on it.
+loads — declining exits immediately without cloning or installing anything. It draws a clear line:
+this container and the `query_*` tools it clones are ownjoo.org's own code, but those tools pull in
+numerous third-party libraries that aren't maintained by ownjoo.org and aren't under our control —
+no warranty, no liability, and no guarantee of security for any of it, plus a recommendation that
+your security team independently evaluate any tool before use. This is a plain-language disclaimer,
+not legal advice — have it reviewed by counsel before relying on it.
 
 ## What's in it
 
-- `git`, `python-3.14` + a venv with `rich` (for the menu UI itself; not restricted to the target
-  tools' own dependencies, which get installed fresh into the same venv per-tool)
+- `git`, `python-3.14` + a venv with [`oj-toolkit`](https://github.com/ownjoo-org/utils) (this
+  org's own console-formatting library — `Box`/`Table`/`Output` for the menu UI itself; not
+  restricted to the target tools' own dependencies, which get installed fresh into the same venv
+  per-tool). Building this menu found and fixed three real bugs in `oj-toolkit` along the way
+  (a `Table` column-count bug, a `Box` titled-border width mismatch, and added the `border_color`
+  feature this menu's red/green borders use) — released as 0.2.3, 0.2.4, and 0.3.0.
 - Non-root by default (`toolrunner` user); the venv is `chown`'d to that user at build time so
   runtime `pip install` (of whatever tool you pick) actually has write permission
+- `PYTHONUNBUFFERED=1` — without it, this menu's own status messages could print out of order
+  relative to `git`/`pip`'s output, since Python block-buffers stdout when it isn't a TTY
 
 ## Tool discovery
 
