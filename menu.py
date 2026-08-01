@@ -1,31 +1,63 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import subprocess
 import sys
+import textwrap
 import urllib.error
 import urllib.request
 
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.prompt import Confirm, IntPrompt
-from rich.table import Table
+from oj_toolkit.console import Box, Output, Table
 
 ORG = "ownjoo-org"
 TOOL_PREFIX = "query_"
 GITHUB_API = f"https://api.github.com/orgs/{ORG}/repos"
 DISCLAIMER_PATH = "/usr/local/share/query-bench/DISCLAIMER.md"
 
-console = Console()
+out = Output()
+
+
+def confirm(prompt: str, default: bool = False) -> bool:
+    suffix = "[Y/n]" if default else "[y/N]"
+    while True:
+        resp = input(f"{prompt} {suffix}: ").strip().lower()
+        if not resp:
+            return default
+        if resp in ("y", "yes"):
+            return True
+        if resp in ("n", "no"):
+            return False
+        out.out("Please enter y or n.")
+
+
+def choose(prompt: str, n: int) -> int:
+    while True:
+        resp = input(f"{prompt} [1-{n}]: ").strip()
+        if resp.isdigit() and 1 <= int(resp) <= n:
+            return int(resp)
+        out.out(f"Please enter a number between 1 and {n}.")
 
 
 def show_disclaimer_and_confirm() -> None:
     with open(DISCLAIMER_PATH, encoding="utf-8") as f:
-        text = f.read()
-    console.print(Panel(Markdown(text), title="Disclaimer", border_style="yellow"))
-    if not Confirm.ask("Do you acknowledge and accept these terms?", default=False):
-        console.print("[red]Not accepted — exiting.[/red]")
+        raw = f.read()
+
+    # Plain-text rendering: strip Markdown syntax rather than parsing it.
+    text = re.sub(r"^#.*\n+", "", raw.strip())
+    text = text.replace("**", "")
+
+    box = Box(style="auto", title="Disclaimer", padding=1)
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    for i, para in enumerate(paragraphs):
+        if i > 0:
+            box.add_line("")
+        for line in textwrap.wrap(" ".join(para.split()), width=76):
+            box.add_line(line)
+    box.out()
+
+    if not confirm("Do you acknowledge and accept these terms?", default=False):
+        out.out_red("Not accepted — exiting.")
         sys.exit(1)
 
 
@@ -59,11 +91,11 @@ def fetch_query_tools() -> list[dict]:
                     )
             page += 1
     except (urllib.error.URLError, urllib.error.HTTPError) as exc:
-        console.print(f"[bold red]Failed to reach GitHub API:[/bold red] {exc}")
+        out.err_red(f"Failed to reach GitHub API: {exc}")
         if isinstance(exc, urllib.error.HTTPError) and exc.code == 403:
-            console.print(
-                "[yellow]This may be a GitHub API rate limit (60/hr unauthenticated). "
-                "Set GITHUB_TOKEN to raise it.[/yellow]"
+            out.err_yellow(
+                "This may be a GitHub API rate limit (60/hr unauthenticated). "
+                "Set GITHUB_TOKEN to raise it."
             )
         sys.exit(1)
     tools.sort(key=lambda t: t["name"])
@@ -97,54 +129,55 @@ def detect_entrypoint(work_dir: str) -> str | None:
 def main() -> None:
     show_disclaimer_and_confirm()
 
-    console.print("[dim]Fetching available tools from GitHub...[/dim]")
+    out.out("Fetching available tools from GitHub...")
     tools = fetch_query_tools()
     if not tools:
-        console.print(f"[red]No {TOOL_PREFIX}* tools found under {ORG}.[/red]")
+        out.out_red(f"No {TOOL_PREFIX}* tools found under {ORG}.")
         sys.exit(1)
 
-    table = Table(title="ownjoo-org query tools")
-    table.add_column("#", style="bold cyan", justify="right")
-    table.add_column("Tool")
-    table.add_column("Description")
+    table = Table(headers=["#", "Tool", "Description"], style="auto")
     for i, tool in enumerate(tools, start=1):
-        table.add_row(str(i), tool["name"], tool["description"])
-    console.print(table)
+        table.add_row(i, tool["name"], tool["description"])
+    table.out()
 
-    choice = IntPrompt.ask(
-        "Select a tool to clone and set up",
-        choices=[str(i) for i in range(1, len(tools) + 1)],
-    )
+    choice = choose("Select a tool to clone and set up", len(tools))
     tool = tools[choice - 1]
 
     work_dir = os.path.expanduser(f"~/{tool['name']}")
-    console.print(f"\n[bold]Cloning[/bold] {tool['repo']} -> {work_dir}")
+    out.out(f"\nCloning {tool['repo']} -> {work_dir}")
     subprocess.run(["git", "clone", "--depth", "1", tool["repo"], work_dir], check=True)
 
     os.chdir(work_dir)
 
     requirements = os.path.join(work_dir, "requirements.txt")
     if os.path.exists(requirements):
-        console.print("[bold]Installing[/bold] requirements.txt")
+        out.out("Installing requirements.txt")
         subprocess.run(["pip", "install", "--no-cache-dir", "-r", requirements], check=True)
     else:
-        console.print("[yellow]No requirements.txt found — skipping pip install[/yellow]")
+        out.out_yellow("No requirements.txt found — skipping pip install")
 
     entrypoint = detect_entrypoint(work_dir)
     hint = (
-        f"Try: [bold]python {entrypoint} --help[/bold]"
+        f"Try: python {entrypoint} --help"
         if entrypoint
         else "Check the repo's README for how to run it."
     )
     if os.path.ismount("/output"):
-        output_note = "[bold]/output[/bold] is mounted — write results there to keep them after this container exits."
+        output_note = "/output is mounted — write results there to keep them after this container exits."
     else:
         output_note = (
             "No host directory is mounted at /output, so anything you write inside this "
-            "container is lost when it exits. Restart with [bold]-v <local-dir>:/output[/bold] "
-            "to keep results."
+            "container is lost when it exits. Restart with -v <local-dir>:/output to keep "
+            "results."
         )
-    console.print(f"\n[bold green]Ready.[/bold green] You're in {work_dir}.\n{hint}\n{output_note}\n")
+    out.out_green(f"\nReady. You're in {work_dir}.")
+    out.out(f"{hint}\n{output_note}\n")
+
+    # os.execvp replaces the process image immediately, bypassing Python's
+    # normal interpreter shutdown -- anything still sitting in stdout's
+    # buffer (oj_toolkit's Output defaults to flush=False) would be lost
+    # rather than ever reaching the terminal.
+    sys.stdout.flush()
 
     shell = os.environ.get("SHELL", "/bin/sh")
     os.execvp(shell, [shell])
@@ -154,7 +187,7 @@ if __name__ == "__main__":
     try:
         main()
     except subprocess.CalledProcessError as exc:
-        console.print(f"[bold red]Command failed:[/bold red] {exc}")
+        out.err_red(f"Command failed: {exc}")
         sys.exit(exc.returncode)
     except KeyboardInterrupt:
         sys.exit(130)
