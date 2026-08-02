@@ -1,6 +1,6 @@
 # Disclaimer
 
-This container is maintained by ownjoo.org, and the tools it clones from the `ownjoo-org` GitHub
+This container is maintained by ownjoo.org, and the tools it clones from the `ownjoo` GitHub
 organization are ownjoo.org's own code as well. However, those tools pull in numerous third-party
 libraries and packages to do their work — those dependencies are not maintained by ownjoo.org and
 are not under our control.

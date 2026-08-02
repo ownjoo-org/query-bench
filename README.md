@@ -1,12 +1,12 @@
 # query-bench
 
 An interactive menu container for customers who don't have git or Python set up locally (or are
-otherwise blocked) but need to run one of the [ownjoo-org](https://github.com/ownjoo-org)
+otherwise blocked) but need to run one of the [ownjoo](https://github.com/ownjoo)
 `query_*` API tools. `docker run` it, pick a tool from the menu, and it clones the repo, installs
 its dependencies, and drops you into a shell already `cd`'d into it — ready to run.
 
 Base: [Chainguard Wolfi](https://github.com/wolfi-dev/os), matching the same supply-chain-hardened
-approach as [`packet-bench`](https://github.com/ownjoo-org/packet-bench).
+approach as [`packet-bench`](https://github.com/ownjoo/packet-bench).
 
 ## Pull
 
@@ -33,7 +33,7 @@ docker run --rm -it query-bench
 
 You'll first see a red-bordered [disclaimer](DISCLAIMER.md) (no warranty, no liability, no
 security guarantee — see below) that you must explicitly accept to continue. After that, a
-green-bordered menu queries the GitHub API live for every public `query_*` repo under `ownjoo-org`
+green-bordered menu queries the GitHub API live for every public `query_*` repo under `ownjoo`
 and lists them — no rebuild needed when a new tool is added org-side. A `0` row is always
 available to skip straight to a shell with nothing cloned.
 
@@ -115,7 +115,7 @@ not legal advice — have it reviewed by counsel before relying on it.
 
 ## What's in it
 
-- `git`, `python-3.14` + a venv with [`oj-toolkit`](https://github.com/ownjoo-org/utils) (this
+- `git`, `python-3.14` + a venv with [`oj-toolkit`](https://github.com/ownjoo/utils) (this
   org's own console-formatting library — `Box`/`Table`/`Output` for the menu UI itself; not
   restricted to the target tools' own dependencies, which get installed fresh into the same venv
   per-tool). Building this menu found and fixed three real bugs in `oj-toolkit` along the way
@@ -128,7 +128,7 @@ not legal advice — have it reviewed by counsel before relying on it.
 
 ## Tool discovery
 
-The menu is dynamic — it lists every public, non-archived repo under `ownjoo-org` whose name
+The menu is dynamic — it lists every public, non-archived repo under `ownjoo` whose name
 starts with `query_`, fetched live via the GitHub API (see `fetch_query_tools()` in
 [`menu.py`](menu.py)). Nothing to maintain here when a new query tool is added or removed org-side.
 
@@ -138,6 +138,6 @@ they couldn't clone anyway.
 
 The only requirement for a tool to work through this menu is that it installs cleanly via
 `pip install -r requirements.txt`. Three tools previously didn't, due to a stale dependency
-reference; see git history / [ownjoo-org/utils](https://github.com/ownjoo-org/utils) for context.
+reference; see git history / [ownjoo/utils](https://github.com/ownjoo/utils) for context.
 Since the list is now fetched live, newly-added `query_*` repos aren't pre-vetted — if one fails to
 install or run, that's a bug in that tool's own repo, not this container.
