@@ -11,7 +11,7 @@ import urllib.request
 from oj_toolkit.console import Box, Color, Output, Table
 from oj_toolkit.console.terminal import visible_width
 
-ORG = "ownjoo-org"
+ORG = "ownjoo"
 TOOL_PREFIX = "query_"
 GITHUB_API = f"https://api.github.com/orgs/{ORG}/repos"
 DISCLAIMER_PATH = "/usr/local/share/query-bench/DISCLAIMER.md"
