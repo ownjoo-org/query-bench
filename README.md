@@ -11,7 +11,7 @@ approach as [`packet-bench`](https://github.com/ownjoo/packet-bench).
 ## Pull
 
 ```bash
-docker pull ownjoo/query-bench
+docker pull ownjooorg/query-bench
 ```
 
 Published automatically by [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)

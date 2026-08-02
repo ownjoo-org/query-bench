@@ -16,7 +16,7 @@ jobs:
       attestations: write   # GitHub build provenance attestations
 
     env:
-      IMAGE: ownjoo/query-bench
+      IMAGE: ownjooorg/query-bench
 
     steps:
       - name: Checkout
