@@ -1,5 +1,7 @@
 # query-bench
 
+[![License](https://img.shields.io/github/license/ownjoo/query-bench)](LICENSE)
+
 An interactive menu container for customers who don't have git or Python set up locally (or are
 otherwise blocked) but need to run one of the [ownjoo](https://github.com/ownjoo)
 `query_*` API tools. `docker run` it, pick a tool from the menu, and it clones the repo, installs
