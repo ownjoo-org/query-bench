@@ -1,6 +1,7 @@
 # query-bench
 
 [![License](https://img.shields.io/github/license/ownjoo/query-bench)](LICENSE)
+[![Top language](https://img.shields.io/github/languages/top/ownjoo/query-bench)](https://github.com/ownjoo/query-bench) [![Stars](https://img.shields.io/github/stars/ownjoo/query-bench)](https://github.com/ownjoo/query-bench/stargazers) [![Forks](https://img.shields.io/github/forks/ownjoo/query-bench)](https://github.com/ownjoo/query-bench/forks) [![Issues](https://img.shields.io/github/issues/ownjoo/query-bench)](https://github.com/ownjoo/query-bench/issues) [![Pull requests](https://img.shields.io/github/issues-pr/ownjoo/query-bench)](https://github.com/ownjoo/query-bench/pulls)
 
 An interactive menu container for customers who don't have git or Python set up locally (or are
 otherwise blocked) but need to run one of the [ownjoo](https://github.com/ownjoo)
